@@ -19,7 +19,7 @@ export default function SavedDestinations({ destinations, onDelete }: Props) {
     <aside className="w-72 h-full bg-white border-l border-gray-100 flex flex-col">
       <div className="p-4 border-b border-gray-100">
         <h2 className="font-semibold text-gray-800 text-sm">Mis destinos</h2>
-        <p className="text-gray-400 text-xs mt-0.5">{destinations.length} guardados</p>
+        <p className="text-gray-400 text-xs mt-0.5">{destinations.length} guardados (esto es solo para probarlo)</p>
       </div>
 
       <div className="flex-1 overflow-y-auto">
