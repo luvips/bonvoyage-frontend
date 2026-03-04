@@ -8,6 +8,7 @@ type SelectedPlace = {
   name: string;
   lng: number;
   lat: number;
+  photoUrl: string | null;
 };
 
 type Props = {
@@ -20,22 +21,15 @@ export default function MapView({ onPlaceSelect, flyTo }: Props) {
 
   useEffect(() => {
     if (!flyTo || !mapRef.current) return;
-    mapRef.current.flyTo({
-      center: [flyTo.lng, flyTo.lat],
-      zoom: 12,
-      duration: 2000,
-    });
+    mapRef.current.flyTo({ center: [flyTo.lng, flyTo.lat], zoom: 12, duration: 2000 });
   }, [flyTo]);
 
   const handleClick = useCallback(
     async (e: MapMouseEvent) => {
       const { lng, lat } = e.lngLat;
-      const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}&language=es`
-      );
-      const data = await response.json();
-      const placeName = data.features?.[0]?.place_name ?? `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-      onPlaceSelect({ name: placeName, lng, lat });
+      const res = await fetch(`/api/places?lat=${lat}&lng=${lng}`);
+      const data = await res.json();
+      onPlaceSelect({ name: data.name, lng, lat, photoUrl: data.photoUrl });
     },
     [onPlaceSelect]
   );
