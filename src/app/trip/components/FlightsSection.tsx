@@ -465,10 +465,7 @@ function FlightCard({
                 Selecciona el día
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {(tripDays && tripDays.length > 0
-                  ? tripDays
-                  : [1,2,3,4,5,6,7].map((n) => ({ dayId: `day-${n}`, dayNumber: n, date: "" }))
-                ).map((d) => (
+                {(tripDays ?? []).map((d) => (
                   <button
                     key={d.dayId}
                     onClick={() => handleAddToDay(d.dayId)}

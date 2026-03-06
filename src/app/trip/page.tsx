@@ -210,11 +210,24 @@ function TripPageContent() {
     }));
   }
 
-  const tripDays = itinerary.days.map((d) => ({
-    dayId: d.dayId,
-    dayNumber: d.dayNumber,
-    date: d.date,
-  }));
+  // Build tripDays: prefer loaded days from backend, else compute from wizard dates
+  const tripDays: { dayId: string; dayNumber: number; date: string }[] =
+    itinerary.days.length > 0
+      ? itinerary.days.map((d) => ({ dayId: d.dayId, dayNumber: d.dayNumber, date: d.date }))
+      : (() => {
+          const start = wizardFlightParams.startDate ? new Date(wizardFlightParams.startDate) : null;
+          const end = wizardFlightParams.endDate ? new Date(wizardFlightParams.endDate) : null;
+          if (!start || !end || start > end) return [];
+          const days: { dayId: string; dayNumber: number; date: string }[] = [];
+          const cur = new Date(start);
+          let n = 1;
+          while (cur <= end && n <= 30) {
+            days.push({ dayId: `placeholder-${n}`, dayNumber: n, date: cur.toISOString().split("T")[0] });
+            cur.setDate(cur.getDate() + 1);
+            n++;
+          }
+          return days;
+        })();
 
   const sectionComponents: Record<TripSection, React.ReactNode> = {
     vuelos: (

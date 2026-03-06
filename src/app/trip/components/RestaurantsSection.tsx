@@ -39,9 +39,7 @@ const BACKEND = "https://bonvoyage-backend.vercel.app";
 
 export default function RestaurantsSection({ destination, tripDays, onAddToItinerary }: Props) {
   const { getToken } = useAuth();
-  const days: TripDay[] = tripDays && tripDays.length > 0
-    ? tripDays
-    : [1, 2, 3, 4, 5, 6, 7].map((n) => ({ dayId: `day-${n}`, dayNumber: n, date: "" }));
+  const days: TripDay[] = tripDays ?? [];
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
