@@ -11,6 +11,8 @@ import {
   IoPricetag,
   IoPerson,
   IoCalendarOutline,
+  IoCheckmark,
+  IoAdd,
 } from "react-icons/io5";
 
 const POIMap = dynamic(() => import("./POIMap"), { ssr: false });
@@ -52,7 +54,15 @@ function tomorrow() {
   return d.toISOString().slice(0, 10);
 }
 
-export default function HotelsSection({ destination }: { destination: Destination }) {
+const BACKEND = "https://bonvoyage-backend.vercel.app";
+
+export default function HotelsSection({
+  destination,
+  tripId,
+}: {
+  destination: Destination;
+  tripId?: string;
+}) {
   const { getToken } = useAuth();
   const [checkIn, setCheckIn] = useState(today());
   const [checkOut, setCheckOut] = useState(tomorrow());
@@ -64,6 +74,8 @@ export default function HotelsSection({ destination }: { destination: Destinatio
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [savedId, setSavedId] = useState<string | null>(null);
 
   async function handleSearch(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -77,12 +89,16 @@ export default function HotelsSection({ destination }: { destination: Destinatio
 
      
       const destRes = await fetch(
-        `https://bonvoyage-backend.vercel.app/api/destinations/search?query=${encodeURIComponent(destination.name)}`,
+        `${BACKEND}/api/destinations/search?query=${encodeURIComponent(destination.name)}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!destRes.ok) throw new Error("No se pudo resolver el destino");
-      const locations = await destRes.json();
-      const match = locations.find((l: { type: string }) => l.type === "CITY") ?? locations[0];
+      const destData = await destRes.json();
+      const places: any[] = destData?.data?.data ?? destData?.data ?? (Array.isArray(destData) ? destData : []);
+      const match =
+        places.find((p: any) => p.navigation?.entityType === "CITY") ??
+        places.find((p: any) => p.navigation?.entityType === "AIRPORT") ??
+        places[0];
       if (!match) throw new Error("Destino no encontrado");
 
  
@@ -115,6 +131,37 @@ export default function HotelsSection({ destination }: { destination: Destinatio
       setSearched(true);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleSaveToItinerary() {
+    if (!selectedHotel || !tripId) return;
+    setSaving(true);
+    try {
+      const token = await getToken();
+      const res = await fetch(`${BACKEND}/api/hotels/save`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          id: selectedHotel.id,
+          name: selectedHotel.name,
+          latitude: selectedHotel.latitude,
+          longitude: selectedHotel.longitude,
+          rating: selectedHotel.rating,
+          imageUrl: selectedHotel.imageUrl,
+          price: selectedHotel.price,
+          trip_id: tripId,
+        }),
+      });
+      if (!res.ok) throw new Error("Error al guardar");
+      setSavedId(selectedHotel.id ?? selectedId);
+    } catch {
+      // silent — could add error toast here
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -322,6 +369,24 @@ export default function HotelsSection({ destination }: { destination: Destinatio
                           {selectedHotel.latitude.toFixed(4)}, {selectedHotel.longitude.toFixed(4)}
                         </p>
                       </div>
+                    )}
+
+                    {tripId && (
+                      <button
+                        onClick={handleSaveToItinerary}
+                        disabled={saving || savedId === (selectedHotel.id ?? selectedId)}
+                        className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-colors
+                          disabled:cursor-not-allowed
+                          bg-blue-500 hover:bg-blue-600 disabled:bg-green-500 text-white"
+                      >
+                        {savedId === (selectedHotel.id ?? selectedId) ? (
+                          <><IoCheckmark className="text-sm" /> Agregado al itinerario</>
+                        ) : saving ? (
+                          "Guardando..."
+                        ) : (
+                          <><IoAdd className="text-sm" /> Agregar al itinerario</>
+                        )}
+                      </button>
                     )}
                   </div>
                 </>

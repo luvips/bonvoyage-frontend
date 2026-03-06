@@ -202,7 +202,7 @@ function TripPageContent() {
         defaultCabinClass={wizardFlightParams.cabinClass}
       />
     ),
-    hospedaje: <HotelsSection destination={destination} />,
+    hospedaje: <HotelsSection destination={destination} tripId={tripId ?? ""} />,
     puntos: (
       <PointsOfInterestSection
         destination={destination}
