@@ -70,17 +70,17 @@ async function resolveLocation(query: string, token: string) {
   );
   if (!res.ok) throw new Error(`No se encontró "${query}"`);
   const data = await res.json();
-  // handle both array and nested-object responses
-  const raw = data?.data ?? data?.places ?? data?.results ?? data;
-  const places: any[] = Array.isArray(raw) ? raw : Object.values(raw ?? {});
-  // prefer city-type results; fall back to first match
+  // response shape: { success, data: { status, timestamp, data: [...] } }
+  const places: any[] = data?.data?.data ?? data?.data ?? [];
+  if (!Array.isArray(places) || places.length === 0)
+    throw new Error(`No se encontró "${query}"`);
+  // prefer CITY, then AIRPORT, then anything
   const match =
-    places.find((p: any) =>
-      (p.navigation?.entityType ?? p.type ?? "").toUpperCase() === "CITY"
-    ) ?? places[0];
-  if (!match) throw new Error(`No se encontró "${query}"`);
-  const skyId = match.skyId ?? match.navigation?.relevantFlightParams?.skyId;
-  const entityId = match.entityId ?? match.navigation?.entityId;
+    places.find((p: any) => p.navigation?.entityType === "CITY") ??
+    places.find((p: any) => p.navigation?.entityType === "AIRPORT") ??
+    places[0];
+  const skyId = match?.skyId;
+  const entityId = match?.entityId;
   if (!skyId || !entityId) throw new Error(`No se pudo resolver el ID de "${query}"`);
   return { skyId, entityId };
 }
