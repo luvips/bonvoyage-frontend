@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
+import { useAuth } from "@clerk/nextjs";
 import { IoStar, IoLocationSharp, IoCompass, IoPricetag, IoSearch, IoAdd, IoCheckmark, IoCalendarOutline } from "react-icons/io5";
 import type { ItineraryItem } from "../types";
 
@@ -33,7 +34,10 @@ type Props = {
   onAddToItinerary: (item: ItineraryItem, dayNumber: number) => void;
 };
 
+const BACKEND = "https://bonvoyage-backend.vercel.app";
+
 export default function PointsOfInterestSection({ destination, onAddToItinerary }: Props) {
+  const { getToken } = useAuth();
   const [places, setPlaces] = useState<POI[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -46,7 +50,11 @@ export default function PointsOfInterestSection({ destination, onAddToItinerary 
     async function fetchPOIs() {
       setLoading(true);
       try {
-        const res = await fetch(`/api/poi?lat=${destination.lat}&lng=${destination.lng}`);
+        const token = await getToken();
+        const res = await fetch(
+          `${BACKEND}/api/poi?lat=${destination.lat}&lng=${destination.lng}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
         const data = await res.json();
         setPlaces(data.places ?? []);
         if (data.places?.length > 0) setSelectedId(data.places[0].id);
