@@ -128,14 +128,13 @@ export default function HotelsSection({ destination }: { destination: Destinatio
   return (
     <div className="px-4 max-w-6xl mx-auto pt-6 pb-8 space-y-5">
 
-      {/* Search form */}
+      {/* busqueda form*/}
       <form
         onSubmit={handleSearch}
         className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4"
       >
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 items-end">
 
-          {/* Destination (read-only) */}
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
               <IoLocationSharp className="text-xs" /> Destino
@@ -145,7 +144,6 @@ export default function HotelsSection({ destination }: { destination: Destinatio
             </div>
           </div>
 
-          {/* Check-in */}
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
               <IoCalendarOutline className="text-xs" /> Entrada
@@ -160,7 +158,7 @@ export default function HotelsSection({ destination }: { destination: Destinatio
             />
           </div>
 
-          {/* Check-out */}
+    
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
               <IoCalendarOutline className="text-xs" /> Salida
@@ -175,7 +173,7 @@ export default function HotelsSection({ destination }: { destination: Destinatio
             />
           </div>
 
-          {/* Adults + Rooms */}
+      
           <div className="flex gap-2">
             <div className="flex flex-col gap-1 flex-1">
               <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
@@ -205,7 +203,7 @@ export default function HotelsSection({ destination }: { destination: Destinatio
             </div>
           </div>
 
-          {/* Search button */}
+       
           <button
             type="submit"
             disabled={loading}
@@ -228,7 +226,7 @@ export default function HotelsSection({ destination }: { destination: Destinatio
         </div>
       )}
 
-      {/* Results */}
+     
       {!searched && !loading && (
         <div className="flex flex-col items-center justify-center h-60 gap-3 text-gray-400">
           <IoBed className="text-5xl text-gray-200" />
@@ -246,7 +244,7 @@ export default function HotelsSection({ destination }: { destination: Destinatio
       {hotels.length > 0 && (
         <div className="flex gap-4 items-start">
 
-          {/* Cards grid */}
+       
           <div className="flex-1 overflow-y-auto max-h-[540px] pr-1">
             <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
               {hotels.map((hotel, i) => {
@@ -263,7 +261,7 @@ export default function HotelsSection({ destination }: { destination: Destinatio
             </div>
           </div>
 
-          {/* Right column: map + detail panel */}
+          
           <div className="w-72 flex-shrink-0 sticky top-16 h-[540px] flex flex-col gap-3">
 
             {/* Map */}
@@ -282,7 +280,7 @@ export default function HotelsSection({ destination }: { destination: Destinatio
               )}
             </div>
 
-            {/* Detail panel */}
+            
             <div className="flex-1 overflow-y-auto bg-white rounded-2xl border border-gray-100 shadow-sm min-h-0">
               {selectedHotel ? (
                 <>
@@ -373,7 +371,7 @@ function HotelCard({
       </div>
 
       <div className="p-2.5">
-        {/* Rating + Price */}
+        {/* precio */}
         <div className="flex items-center justify-between mb-1">
           {hotel.rating && hotel.rating !== "N/A" ? (
             <div className="flex items-center gap-1">
@@ -390,7 +388,7 @@ function HotelCard({
           )}
         </div>
 
-        {/* Name */}
+    
         <h3 className="font-semibold text-gray-800 text-xs leading-tight line-clamp-2">
           {hotel.name}
         </h3>
