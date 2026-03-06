@@ -442,8 +442,8 @@ function FlightCard({
         </div>
       )}
 
-      {/* Add to itinerary */}
-      {expanded && onSaveToDay && tripDays && tripDays.length > 0 && (
+      {/* Add to itinerary — always visible when tripId is set */}
+      {onSaveToDay && (
         <div className="border-t border-gray-100 px-5 py-3">
           {savedDayId ? (
             <div className="flex items-center gap-2 text-green-600 text-xs font-semibold">
@@ -452,20 +452,23 @@ function FlightCard({
             </div>
           ) : !pickerOpen ? (
             <button
-              onClick={() => setPickerOpen(true)}
+              onClick={(e) => { e.stopPropagation(); setPickerOpen(true); }}
               className="flex items-center gap-2 text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
             >
               <IoAdd className="text-sm" />
               Agregar al itinerario
             </button>
           ) : (
-            <div>
+            <div onClick={(e) => e.stopPropagation()}>
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2 flex items-center gap-1">
                 <IoCalendarOutline className="text-xs" />
                 Selecciona el día
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {tripDays.map((d) => (
+                {(tripDays && tripDays.length > 0
+                  ? tripDays
+                  : [1,2,3,4,5,6,7].map((n) => ({ dayId: `day-${n}`, dayNumber: n, date: "" }))
+                ).map((d) => (
                   <button
                     key={d.dayId}
                     onClick={() => handleAddToDay(d.dayId)}

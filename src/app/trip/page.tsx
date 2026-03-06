@@ -115,19 +115,31 @@ function TripPageContent() {
 
   async function addToItinerary(item: ItineraryItem, dayNumber: number) {
     const day = itinerary.days.find((d) => d.dayNumber === dayNumber);
-    if (!day) return;
-    if (day.items.some((i) => i.id === item.id)) return; // already added
+    if (day?.items.some((i) => i.id === item.id)) return; // already added
 
-    // Optimistic update — show immediately in UI
+    // Optimistic update — create a placeholder day if the trip hasn't loaded yet
     const tempId = crypto.randomUUID();
-    setItinerary((prev) => ({
-      ...prev,
-      days: prev.days.map((d) =>
-        d.dayNumber === dayNumber
-          ? { ...d, items: [...d.items, { ...item, itemId: tempId }] }
-          : d
-      ),
-    }));
+    setItinerary((prev) => {
+      const existing = prev.days.find((d) => d.dayNumber === dayNumber);
+      if (existing) {
+        return {
+          ...prev,
+          days: prev.days.map((d) =>
+            d.dayNumber === dayNumber
+              ? { ...d, items: [...d.items, { ...item, itemId: tempId }] }
+              : d
+          ),
+        };
+      }
+      // Trip not loaded yet — add a placeholder day so the UI still shows the item
+      return {
+        ...prev,
+        days: [
+          ...prev.days,
+          { dayId: `placeholder-${dayNumber}`, dayNumber, date: "", items: [{ ...item, itemId: tempId }] },
+        ].sort((a, b) => a.dayNumber - b.dayNumber),
+      };
+    });
 
     try {
       const token = await getToken();
@@ -158,7 +170,8 @@ function TripPageContent() {
 
       const { reference_id } = await saveRes.json();
 
-      // 2. Add item to the itinerary day
+      // 2. Add item to the itinerary day (skip if day has no real backend ID)
+      if (!day?.dayId || day.dayId.startsWith("placeholder-")) return;
       await fetch(`${BACKEND}/api/trips/${tripId}/days/${day.dayId}/items`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
