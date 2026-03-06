@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
-import { IoStar, IoLocationSharp, IoCompass, IoPricetag, IoSearch, IoAdd, IoCheckmark } from "react-icons/io5";
+import { IoStar, IoLocationSharp, IoCompass, IoPricetag, IoSearch, IoAdd, IoCheckmark, IoCalendarOutline } from "react-icons/io5";
 import type { ItineraryItem } from "../types";
 
 const POIMap = dynamic(() => import("./POIMap"), { ssr: false });
@@ -40,6 +40,7 @@ export default function PointsOfInterestSection({ destination, onAddToItinerary 
   const [query, setQuery] = useState("");
   const [pickerOpenId, setPickerOpenId] = useState<string | null>(null);
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+  const [detailPickerOpen, setDetailPickerOpen] = useState(false);
 
   useEffect(() => {
     async function fetchPOIs() {
@@ -69,6 +70,8 @@ export default function PointsOfInterestSection({ destination, onAddToItinerary 
     );
   }, [places, query]);
 
+  const selectedPlace = filtered.find((p) => p.id === selectedId) ?? null;
+
   function handleAddToDay(poi: POI, day: number) {
     onAddToItinerary(
       {
@@ -86,6 +89,7 @@ export default function PointsOfInterestSection({ destination, onAddToItinerary 
     );
     setAddedIds((prev) => new Set(prev).add(poi.id));
     setPickerOpenId(null);
+    setDetailPickerOpen(false);
   }
 
   if (loading) {
@@ -123,6 +127,7 @@ export default function PointsOfInterestSection({ destination, onAddToItinerary 
 
       <div className="flex gap-4 items-start">
 
+        {/* Cards grid */}
         <div className="flex-1 overflow-y-auto max-h-[580px] pr-1">
           {filtered.length === 0 ? (
             <p className="text-sm text-gray-400 py-10 text-center">Sin resultados para "{query}"</p>
@@ -135,7 +140,7 @@ export default function PointsOfInterestSection({ destination, onAddToItinerary 
                   selected={selectedId === poi.id}
                   added={addedIds.has(poi.id)}
                   pickerOpen={pickerOpenId === poi.id}
-                  onClick={() => { setSelectedId(poi.id); setPickerOpenId(null); }}
+                  onClick={() => { setSelectedId(poi.id); setPickerOpenId(null); setDetailPickerOpen(false); }}
                   onPickerToggle={() => setPickerOpenId(pickerOpenId === poi.id ? null : poi.id)}
                   onAddToDay={(day) => handleAddToDay(poi, day)}
                 />
@@ -144,13 +149,123 @@ export default function PointsOfInterestSection({ destination, onAddToItinerary 
           )}
         </div>
 
-        <div className="w-72 flex-shrink-0 sticky top-16 h-[580px] rounded-2xl overflow-hidden shadow-md border border-gray-100">
-          <POIMap
-            places={filtered}
-            selectedId={selectedId}
-            onSelectId={setSelectedId}
-            center={{ lat: destination.lat, lng: destination.lng }}
-          />
+        {/* Right column: map + detail panel */}
+        <div className="w-72 flex-shrink-0 sticky top-16 h-[580px] flex flex-col gap-3">
+
+          {/* Map */}
+          <div className="h-[240px] rounded-2xl overflow-hidden shadow-md border border-gray-100 flex-shrink-0">
+            <POIMap
+              places={filtered}
+              selectedId={selectedId}
+              onSelectId={(id) => { setSelectedId(id); setDetailPickerOpen(false); }}
+              center={{ lat: destination.lat, lng: destination.lng }}
+            />
+          </div>
+
+          {/* Detail panel */}
+          <div className="flex-1 overflow-y-auto bg-white rounded-2xl border border-gray-100 shadow-sm min-h-0">
+            {selectedPlace ? (
+              <>
+                {selectedPlace.photoUrl && (
+                  <div className="w-full h-32 overflow-hidden rounded-t-2xl flex-shrink-0">
+                    <img
+                      src={selectedPlace.photoUrl}
+                      alt={selectedPlace.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+                <div className="p-3 space-y-2">
+                  {/* Name */}
+                  <h3 className="font-bold text-gray-800 text-sm leading-snug">{selectedPlace.name}</h3>
+
+                  {/* Rating + Price */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {selectedPlace.rating && (
+                      <div className="flex items-center gap-1">
+                        <IoStar className="text-amber-400 text-xs" />
+                        <span className="text-xs font-semibold text-gray-700">
+                          {selectedPlace.rating.toFixed(1)}
+                        </span>
+                        {selectedPlace.ratingCount && (
+                          <span className="text-[10px] text-gray-400">
+                            ({selectedPlace.ratingCount > 999
+                              ? `${(selectedPlace.ratingCount / 1000).toFixed(1)}k`
+                              : selectedPlace.ratingCount})
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {selectedPlace.priceLevel && (
+                      <div className="flex items-center gap-0.5 text-gray-500">
+                        <IoPricetag className="text-[10px]" />
+                        <span className="text-xs">{selectedPlace.priceLevel}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  {selectedPlace.description && (
+                    <p className="text-xs text-gray-600 leading-relaxed">{selectedPlace.description}</p>
+                  )}
+
+                  {/* Address */}
+                  <div className="flex items-start gap-1.5">
+                    <IoLocationSharp className="text-gray-400 text-xs flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-gray-500">{selectedPlace.address}</p>
+                  </div>
+
+                  {/* Add to itinerary */}
+                  {!detailPickerOpen ? (
+                    <button
+                      onClick={() => setDetailPickerOpen(true)}
+                      className={`w-full mt-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-colors ${
+                        addedIds.has(selectedPlace.id)
+                          ? "bg-green-50 text-green-600 border border-green-200"
+                          : "bg-blue-500 text-white hover:bg-blue-600"
+                      }`}
+                    >
+                      {addedIds.has(selectedPlace.id) ? (
+                        <><IoCheckmark className="text-sm" /> Añadido al itinerario</>
+                      ) : (
+                        <><IoCalendarOutline className="text-sm" /> Añadir a mi día</>
+                      )}
+                    </button>
+                  ) : (
+                    <div className="mt-1 p-2 bg-gray-50 rounded-xl border border-gray-100">
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                        Selecciona el día
+                      </p>
+                      <div className="grid grid-cols-4 gap-1">
+                        {[1, 2, 3, 4, 5, 6, 7].map((day) => (
+                          <button
+                            key={day}
+                            onClick={() => handleAddToDay(selectedPlace, day)}
+                            className="text-xs font-medium text-gray-700 hover:bg-blue-500 hover:text-white rounded-lg py-1.5 transition-colors bg-white border border-gray-200"
+                          >
+                            {day}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => setDetailPickerOpen(false)}
+                        className="w-full mt-1.5 text-[10px] text-gray-400 hover:text-gray-600"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-gray-300 gap-2 p-4">
+                <IoCompass className="text-3xl" />
+                <p className="text-xs text-center text-gray-400">
+                  Selecciona un lugar para ver sus detalles
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -183,7 +298,7 @@ function POICard({
           : "border-gray-100 hover:border-gray-300 hover:shadow"
       }`}
     >
-      {/* Add to itinerary button */}
+      {/* boton para añadir al itinerario */}
       <button
         onClick={(e) => { e.stopPropagation(); onPickerToggle(); }}
         title="Agregar al itinerario"
@@ -196,7 +311,7 @@ function POICard({
         {added ? <IoCheckmark className="text-xs" /> : <IoAdd className="text-sm" />}
       </button>
 
-      {/* Day picker popover */}
+      {/* elegir dia */}
       {pickerOpen && (
         <div
           onClick={(e) => e.stopPropagation()}
@@ -219,7 +334,7 @@ function POICard({
         </div>
       )}
 
-      {/* Image */}
+      {/* Imagen */}
       <div className="w-full h-28 bg-gray-100 overflow-hidden">
         {poi.photoUrl ? (
           <img src={poi.photoUrl} alt={poi.name} className="w-full h-full object-cover" />
