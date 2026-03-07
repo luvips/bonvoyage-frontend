@@ -137,7 +137,7 @@ export default function FlightsSection({
       body: JSON.stringify({
         item_type: "FLIGHT",
         flight_reference_id: reference_id,
-        estimated_cost: vuelo.precio ?? undefined,
+        estimated_cost: vuelo.precio != null ? Number(vuelo.precio) : undefined,
         notes: "Vuelo",
       }),
     });
