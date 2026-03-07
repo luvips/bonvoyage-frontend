@@ -53,6 +53,7 @@ type Props = {
   defaultReturnDate?: string;
   defaultPassengers?: number;
   defaultCabinClass?: string;
+  onFlightSave?: (info: { airline: string; origin: string | null; destination: string | null; departure: string | null; price: number | null }) => void;
 };
 
 function formatDuration(min: number | null) {
@@ -97,6 +98,7 @@ export default function FlightsSection({
   defaultReturnDate = "",
   defaultPassengers = 1,
   defaultCabinClass = "economy",
+  onFlightSave,
 }: Props) {
   const { getToken } = useAuth();
 
@@ -131,6 +133,13 @@ export default function FlightsSection({
         estimated_cost: vuelo.precio ?? undefined,
         notes: "Vuelo",
       }),
+    });
+    onFlightSave?.({
+      airline: firstLeg?.aerolinea ?? vuelo.aerolinea ?? "Aerolínea",
+      origin: firstLeg?.origen ?? vuelo.origen ?? null,
+      destination: firstLeg?.destino ?? vuelo.destino ?? null,
+      departure: firstLeg?.salida ?? vuelo.salida ?? null,
+      price: vuelo.precio ?? null,
     });
   }
   const [tripType, setTripType] = useState<TripType>("ida-vuelta");

@@ -56,12 +56,16 @@ function tomorrow() {
 
 const BACKEND = "https://bonvoyage-backend.vercel.app";
 
+type SavedHotelInfo = { name: string; imageUrl: string | null; price: string };
+
 export default function HotelsSection({
   destination,
   tripId,
+  onHotelSave,
 }: {
   destination: Destination;
   tripId?: string;
+  onHotelSave?: (hotel: SavedHotelInfo) => void;
 }) {
   const { getToken } = useAuth();
   const [checkIn, setCheckIn] = useState(today());
@@ -158,6 +162,7 @@ export default function HotelsSection({
       });
       if (!res.ok) throw new Error("Error al guardar");
       setSavedId(selectedHotel.id ?? selectedId);
+      onHotelSave?.({ name: selectedHotel.name, imageUrl: selectedHotel.imageUrl, price: selectedHotel.price });
     } catch {
       // silent — could add error toast here
     } finally {

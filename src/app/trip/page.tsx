@@ -41,6 +41,8 @@ function TripPageContent() {
   };
 
   const [itinerary, setItinerary] = useState<TripItinerary>({ tripId: tripId ?? "", days: [] });
+  const [savedHotel, setSavedHotel] = useState<{ name: string; imageUrl: string | null; price: string } | null>(null);
+  const [savedFlight, setSavedFlight] = useState<{ airline: string; origin: string | null; destination: string | null; departure: string | null; price: number | null } | null>(null);
   const [loadingTrip, setLoadingTrip] = useState(!!tripId);
   const [tripError, setTripError] = useState<string | null>(null);
 
@@ -210,24 +212,34 @@ function TripPageContent() {
     }));
   }
 
-  // Build tripDays: prefer loaded days from backend, else compute from wizard dates
-  const tripDays: { dayId: string; dayNumber: number; date: string }[] =
-    itinerary.days.length > 0
-      ? itinerary.days.map((d) => ({ dayId: d.dayId, dayNumber: d.dayNumber, date: d.date }))
-      : (() => {
-          const start = wizardFlightParams.startDate ? new Date(wizardFlightParams.startDate) : null;
-          const end = wizardFlightParams.endDate ? new Date(wizardFlightParams.endDate) : null;
-          if (!start || !end || start > end) return [];
-          const days: { dayId: string; dayNumber: number; date: string }[] = [];
-          const cur = new Date(start);
-          let n = 1;
-          while (cur <= end && n <= 30) {
-            days.push({ dayId: `placeholder-${n}`, dayNumber: n, date: cur.toISOString().split("T")[0] });
-            cur.setDate(cur.getDate() + 1);
-            n++;
-          }
-          return days;
-        })();
+  // Build tripDays: always use the full wizard date range so the day picker never collapses
+  // after an optimistic add. When backend days are loaded we prefer their real dayIds.
+  const tripDays: { dayId: string; dayNumber: number; date: string }[] = (() => {
+    const start = wizardFlightParams.startDate ? new Date(wizardFlightParams.startDate) : null;
+    const end = wizardFlightParams.endDate ? new Date(wizardFlightParams.endDate) : null;
+    if (start && end && start <= end) {
+      const days: { dayId: string; dayNumber: number; date: string }[] = [];
+      const cur = new Date(start);
+      let n = 1;
+      while (cur <= end && n <= 30) {
+        const dateStr = cur.toISOString().split("T")[0];
+        // Prefer a real (non-placeholder) backend dayId for this day number
+        const backendDay = itinerary.days.find(
+          (d) => d.dayNumber === n && !d.dayId.startsWith("placeholder-")
+        );
+        days.push({
+          dayId: backendDay?.dayId ?? `placeholder-${n}`,
+          dayNumber: n,
+          date: backendDay?.date || dateStr,
+        });
+        cur.setDate(cur.getDate() + 1);
+        n++;
+      }
+      return days;
+    }
+    // No wizard dates — fall back to whatever the backend returned
+    return itinerary.days.map((d) => ({ dayId: d.dayId, dayNumber: d.dayNumber, date: d.date }));
+  })();
 
   const sectionComponents: Record<TripSection, React.ReactNode> = {
     vuelos: (
@@ -240,9 +252,16 @@ function TripPageContent() {
         defaultReturnDate={wizardFlightParams.endDate}
         defaultPassengers={wizardFlightParams.passengers}
         defaultCabinClass={wizardFlightParams.cabinClass}
+        onFlightSave={(info) => setSavedFlight(info)}
       />
     ),
-    hospedaje: <HotelsSection destination={destination} tripId={tripId ?? ""} />,
+    hospedaje: (
+      <HotelsSection
+        destination={destination}
+        tripId={tripId ?? ""}
+        onHotelSave={(hotel) => setSavedHotel(hotel)}
+      />
+    ),
     puntos: (
       <PointsOfInterestSection
         destination={destination}
@@ -261,6 +280,8 @@ function TripPageContent() {
       <ItinerarySection
         itinerary={itinerary}
         onRemove={removeFromItinerary}
+        savedHotel={savedHotel}
+        savedFlight={savedFlight}
       />
     ),
   };
