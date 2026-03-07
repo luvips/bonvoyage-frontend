@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useAuth } from "@clerk/nextjs";
 import Header from "@/app/components/Header";
@@ -20,35 +21,44 @@ type SelectedPlace = {
   photoUrl: string | null;
 };
 
-export default function DashboardPage() {
+function DashboardContent() {
   const { getToken } = useAuth();
-  const [selectedPlace, setSelectedPlace] = useState<SelectedPlace | null>(null);
-  const [flyTo, setFlyTo] = useState<{ lng: number; lat: number } | null>(null);
+  const searchParams = useSearchParams();
+
+  // Build initial place from wishlist URL params (if present)
+  const fromWishlistParam = searchParams.get("fromWishlist") === "1";
+  const initLat = parseFloat(searchParams.get("lat") ?? "NaN");
+  const initLng = parseFloat(searchParams.get("lng") ?? "NaN");
+  const initCity = searchParams.get("city") ?? "";
+  const initCountry = searchParams.get("country") ?? "";
+  const initPhoto = searchParams.get("photo") || null;
+
+  const initialPlace: SelectedPlace | null =
+    fromWishlistParam && !isNaN(initLat) && !isNaN(initLng) && initCity
+      ? {
+          name: initCity,
+          country: initCountry,
+          fullName: initCountry ? `${initCity}, ${initCountry}` : initCity,
+          lat: initLat,
+          lng: initLng,
+          photoUrl: initPhoto,
+        }
+      : null;
+
+  const [selectedPlace, setSelectedPlace] = useState<SelectedPlace | null>(initialPlace);
+  const [flyTo, setFlyTo] = useState<{ lng: number; lat: number } | null>(
+    initialPlace ? { lat: initialPlace.lat, lng: initialPlace.lng } : null
+  );
   const [wizardPlace, setWizardPlace] = useState<SelectedPlace | null>(null);
   const [wishlistToast, setWishlistToast] = useState<"success" | "error" | null>(null);
-  const [fromWishlist, setFromWishlist] = useState(false);
-
-  // Auto-open DestinationCard when navigating from wishlist "Planificar viaje"
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("fromWishlist") !== "1") return;
-    const lat = parseFloat(params.get("lat") ?? "");
-    const lng = parseFloat(params.get("lng") ?? "");
-    const city = params.get("city") ?? "";
-    const country = params.get("country") ?? "";
-    const photo = params.get("photo") ?? null;
-    if (!isNaN(lat) && !isNaN(lng) && city) {
-      setFlyTo({ lat, lng });
-      setSelectedPlace({ name: city, country, fullName: country ? `${city}, ${country}` : city, lat, lng, photoUrl: photo || null });
-      setFromWishlist(true);
-    }
-  }, []);
+  const [fromWishlist, setFromWishlist] = useState(fromWishlistParam);
 
   const handleSearch = useCallback(async (result: { name: string; lng: number; lat: number }) => {
     setFlyTo({ lng: result.lng, lat: result.lat });
     const res = await fetch(`/api/places?lat=${result.lat}&lng=${result.lng}`);
     const data = await res.json();
     setSelectedPlace({ name: data.name ?? result.name, country: data.country ?? "", fullName: data.fullName ?? data.name ?? result.name, lng: result.lng, lat: result.lat, photoUrl: data.photoUrl });
+    setFromWishlist(false);
   }, []);
 
   async function handleSaveToWishlist(place: SelectedPlace) {
@@ -73,7 +83,7 @@ export default function DashboardPage() {
     <div className="flex flex-col h-screen w-full overflow-hidden">
       <Header variant="light" onSearch={handleSearch} />
       <div className="relative flex-1">
-        <MapView onPlaceSelect={setSelectedPlace} flyTo={flyTo} />
+        <MapView onPlaceSelect={(place) => { setSelectedPlace(place); setFromWishlist(false); }} flyTo={flyTo} />
         {selectedPlace && !wizardPlace && (
           <DestinationCard
             place={selectedPlace}
@@ -96,5 +106,13 @@ export default function DashboardPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-screen text-gray-400">Cargando...</div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }
