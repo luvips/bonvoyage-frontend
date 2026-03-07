@@ -23,28 +23,39 @@ function TripPageContent() {
 
   const tripId = searchParams.get("tripId");
 
-  const destination = {
-    name: searchParams.get("name") ?? "Destino",
-    country: searchParams.get("country") ?? "",
-    lat: parseFloat(searchParams.get("lat") ?? "0"),
-    lng: parseFloat(searchParams.get("lng") ?? "0"),
-    photoUrl: searchParams.get("photoUrl") ?? null,
-  };
-
-  // Pre-fill flight params passed from the wizard
-  const wizardFlightParams = {
-    origin: searchParams.get("origin") ?? "",
-    startDate: searchParams.get("startDate") ?? "",
-    endDate: searchParams.get("endDate") ?? "",
-    passengers: parseInt(searchParams.get("passengers") ?? "1"),
-    cabinClass: searchParams.get("cabinClass") ?? "economy",
-  };
-
   const [itinerary, setItinerary] = useState<TripItinerary>({ tripId: tripId ?? "", days: [] });
   const [savedHotel, setSavedHotel] = useState<{ name: string; imageUrl: string | null; price: string } | null>(null);
   const [savedFlight, setSavedFlight] = useState<{ airline: string; origin: string | null; destination: string | null; departure: string | null; price: number | null } | null>(null);
   const [loadingTrip, setLoadingTrip] = useState(!!tripId);
   const [tripError, setTripError] = useState<string | null>(null);
+  const [tripMeta, setTripMeta] = useState<{
+    startDate: string;
+    endDate: string;
+    photoUrl: string | null;
+    lat: number | null;
+    lng: number | null;
+    country: string | null;
+  } | null>(null);
+
+  const urlLat = parseFloat(searchParams.get("lat") ?? "NaN");
+  const urlLng = parseFloat(searchParams.get("lng") ?? "NaN");
+
+  const destination = {
+    name: searchParams.get("name") ?? "Destino",
+    country: searchParams.get("country") ?? tripMeta?.country ?? "",
+    lat: (!isNaN(urlLat) ? urlLat : null) ?? tripMeta?.lat ?? 0,
+    lng: (!isNaN(urlLng) ? urlLng : null) ?? tripMeta?.lng ?? 0,
+    photoUrl: searchParams.get("photoUrl") ?? tripMeta?.photoUrl ?? null,
+  };
+
+  // Pre-fill flight params passed from the wizard (or loaded from backend)
+  const wizardFlightParams = {
+    origin: searchParams.get("origin") ?? "",
+    startDate: searchParams.get("startDate") ?? tripMeta?.startDate ?? "",
+    endDate: searchParams.get("endDate") ?? tripMeta?.endDate ?? "",
+    passengers: parseInt(searchParams.get("passengers") ?? "1"),
+    cabinClass: searchParams.get("cabinClass") ?? "economy",
+  };
 
   const loadTrip = useCallback(async () => {
     if (!tripId) return;
@@ -104,6 +115,16 @@ function TripPageContent() {
       }));
 
       setItinerary({ tripId, days });
+
+      // Store trip-level metadata to fill in missing URL params
+      setTripMeta({
+        startDate: data.start_date?.slice(0, 10) ?? "",
+        endDate: data.end_date?.slice(0, 10) ?? "",
+        photoUrl: data.destination_image ?? null,
+        lat: data.destination_lat ?? data.latitude ?? null,
+        lng: data.destination_lng ?? data.longitude ?? null,
+        country: data.destination_country ?? data.country ?? null,
+      });
     } catch (err: unknown) {
       setTripError(err instanceof Error ? err.message : "Error al cargar el viaje");
     } finally {

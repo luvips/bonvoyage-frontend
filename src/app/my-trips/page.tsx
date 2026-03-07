@@ -94,7 +94,16 @@ export default function MyTripsPage() {
         {!loading && trips.length > 0 && (
           <div className="space-y-3">
             {trips.map((trip) => (
-              <TripCard key={trip.trip_id} trip={trip} onClick={() => router.push(`/trip?tripId=${trip.trip_id}&name=${encodeURIComponent(trip.destination_city ?? trip.destination_name ?? trip.trip_name)}`)} />
+              <TripCard key={trip.trip_id} trip={trip} onClick={() => {
+                const params = new URLSearchParams({
+                  tripId: trip.trip_id,
+                  name: trip.destination_city ?? trip.destination_name ?? trip.trip_name,
+                });
+                if (trip.start_date) params.set("startDate", trip.start_date.slice(0, 10));
+                if (trip.end_date) params.set("endDate", trip.end_date.slice(0, 10));
+                if (trip.destination_image) params.set("photoUrl", trip.destination_image);
+                router.push(`/trip?${params.toString()}`);
+              }} />
             ))}
           </div>
         )}
