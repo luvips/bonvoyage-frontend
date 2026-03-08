@@ -376,6 +376,11 @@ function TripPageContent() {
         onRemove={removeFromItinerary}
         savedHotel={savedHotel}
         savedFlight={savedFlight}
+        center={
+          destination.lat && destination.lng
+            ? { lat: destination.lat, lng: destination.lng }
+            : undefined
+        }
       />
     ),
   };
