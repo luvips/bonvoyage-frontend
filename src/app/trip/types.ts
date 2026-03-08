@@ -13,9 +13,9 @@ export type ItineraryItem = {
 };
 
 export type TripDay = {
-  dayId: string;        // UUID from itinerary_days table
+  dayId: string;        
   dayNumber: number;
-  date: string;         // "2026-06-01"
+  date: string;        
 };
 
 export type DayPlan = TripDay & {

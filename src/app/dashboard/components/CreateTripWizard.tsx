@@ -104,6 +104,7 @@ export default function CreateTripWizard({ place, onClose }: Props) {
         start_date: departDate,
         end_date: returnDate,
         currency,
+        ...(place.photoUrl ? { destination_image: place.photoUrl } : {}),
       };
       if (budget) body.total_budget = parseFloat(budget);
 
