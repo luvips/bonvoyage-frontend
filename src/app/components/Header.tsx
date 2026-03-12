@@ -1,12 +1,13 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "motion/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { IoIosGlobe } from "react-icons/io";
 import { IoSearchOutline } from "react-icons/io5";
 import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+import AvatarSelectorModal from "./AvatarSelectorModal";
 
 type SearchResult = {
   name: string;
@@ -24,6 +25,7 @@ function Header({ variant = "dark", onSearch }: Props) {
     const router = useRouter();
     const [query, setQuery] = React.useState("");
     const [loading, setLoading] = React.useState(false);
+    const [avatarModalOpen, setAvatarModalOpen] = useState(false);
 
     const handleSearch = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -62,6 +64,8 @@ function Header({ variant = "dark", onSearch }: Props) {
     const activeBorderClass = isLight ? "border-b-2 border-b-blue-500 text-gray-900" : "border-b-2 border-b-blue-500";
 
     return (
+        <>
+        {avatarModalOpen && <AvatarSelectorModal onClose={() => setAvatarModalOpen(false)} />}
         <div className={containerClass}>
             <div className={`flex items-center gap-2 font-medium tracking-[4px] ${textClass}`}>
                 <IoIosGlobe className="text-xl"/>
@@ -109,6 +113,11 @@ function Header({ variant = "dark", onSearch }: Props) {
                     <SignedIn>
                         <UserButton>
                             <UserButton.MenuItems>
+                                <UserButton.Action
+                                    label="Cambiar avatar"
+                                    labelIcon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path fillRule="evenodd" d="M18.685 19.097A9.723 9.723 0 0021.75 12c0-5.385-4.365-9.75-9.75-9.75S2.25 6.615 2.25 12a9.723 9.723 0 003.065 7.097A9.716 9.716 0 0012 21.75a9.716 9.716 0 006.685-2.653zm-12.54-1.285A7.486 7.486 0 0112 15a7.486 7.486 0 015.855 2.812A8.224 8.224 0 0112 20.25a8.224 8.224 0 01-5.855-2.438zM15.75 9a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" clipRule="evenodd" /></svg>}
+                                    onClick={() => setAvatarModalOpen(true)}
+                                />
                                 <UserButton.Link
                                     label="Mis viajes"
                                     labelIcon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" /></svg>}
@@ -130,6 +139,7 @@ function Header({ variant = "dark", onSearch }: Props) {
                 </div>
             </ul>
         </div>
+        </>
     );
 }
 
