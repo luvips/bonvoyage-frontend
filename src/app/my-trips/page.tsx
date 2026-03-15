@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { IoAirplane, IoCalendarOutline, IoChevronForward, IoHeart, IoHeartOutline, IoTrashOutline } from "react-icons/io5";
+import { IoAirplane, IoCalendarOutline, IoChevronForward, IoHeart, IoHeartOutline, IoTrashOutline, IoSearchOutline, IoClose } from "react-icons/io5";
 import Link from "next/link";
 import Header from "@/app/components/Header";
 
@@ -32,6 +32,8 @@ export default function MyTripsPage() {
   const [toggling, setToggling] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
 
   useEffect(() => {
     async function load() {
@@ -101,6 +103,20 @@ export default function MyTripsPage() {
     }
   }
 
+  const STATUS_LABELS: Record<string, string> = {
+    ALL: "Todos", DRAFT: "Borrador", CONFIRMED: "Confirmado",
+    COMPLETED: "Completado", CANCELLED: "Cancelado",
+  };
+
+  const filteredTrips = trips.filter((t) => {
+    const q = search.toLowerCase();
+    const matchesSearch = !q ||
+      t.trip_name.toLowerCase().includes(q) ||
+      (t.destination_city ?? t.destination_name ?? "").toLowerCase().includes(q);
+    const matchesStatus = statusFilter === "ALL" || t.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header variant="light" />
@@ -116,6 +132,50 @@ export default function MyTripsPage() {
             Nuevo viaje
           </Link>
         </div>
+
+        {/* Search + filters */}
+        {!loading && trips.length > 0 && (
+          <div className="space-y-3 mb-5">
+            {/* Search bar */}
+            <div className="relative">
+              <IoSearchOutline className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-base" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar por nombre o destino..."
+                className="w-full pl-9 pr-9 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent shadow-sm"
+              />
+              {search && (
+                <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  <IoClose className="text-base" />
+                </button>
+              )}
+            </div>
+
+            {/* Status filters */}
+            <div className="flex gap-2 flex-wrap">
+              {Object.keys(STATUS_LABELS).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setStatusFilter(s)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+                    statusFilter === s
+                      ? "bg-blue-500 text-white"
+                      : "bg-white text-gray-500 border border-gray-200 hover:border-blue-300 hover:text-blue-500"
+                  }`}
+                >
+                  {STATUS_LABELS[s]}
+                  {s !== "ALL" && (
+                    <span className={`ml-1.5 ${statusFilter === s ? "text-blue-200" : "text-gray-300"}`}>
+                      {trips.filter((t) => t.status === s).length}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {loading && (
           <div className="space-y-3">
@@ -143,9 +203,23 @@ export default function MyTripsPage() {
           </div>
         )}
 
-        {!loading && trips.length > 0 && (
+        {!loading && trips.length > 0 && filteredTrips.length === 0 && (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
+            <IoSearchOutline className="text-4xl text-gray-200 mx-auto mb-3" />
+            <p className="text-gray-500 text-sm font-medium">Sin resultados</p>
+            <p className="text-gray-400 text-xs mt-1">Intenta con otro nombre, destino o estado</p>
+            <button
+              onClick={() => { setSearch(""); setStatusFilter("ALL"); }}
+              className="mt-3 text-xs text-blue-500 hover:text-blue-600 font-semibold"
+            >
+              Limpiar filtros
+            </button>
+          </div>
+        )}
+
+        {!loading && filteredTrips.length > 0 && (
           <div className="space-y-3">
-            {trips.map((trip) => (
+            {filteredTrips.map((trip) => (
               <TripCard
                 key={trip.trip_id}
                 trip={trip}
