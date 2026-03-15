@@ -4,9 +4,17 @@ import { useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import {
   IoCalendar, IoCompass, IoRestaurant, IoBed, IoAirplane,
-  IoArrowForward, IoLocationSharp, IoStar, IoTrash, IoMap,
+  IoArrowForward, IoLocationSharp, IoStar, IoTrash, IoMap, IoReorderThree,
 } from "react-icons/io5";
 import type { TripItinerary, ItineraryItem } from "../types";
+import {
+  DndContext, closestCenter, DragEndEvent,
+  PointerSensor, useSensor, useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext, useSortable, rectSortingStrategy, arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 const ItineraryMap = dynamic(() => import("./ItineraryMap"), { ssr: false });
 
@@ -16,6 +24,7 @@ type SavedFlight = { airline: string; origin: string | null; destination: string
 type Props = {
   itinerary: TripItinerary;
   onRemove: (itemId: string, dayNumber: number) => void;
+  onReorder?: (dayNumber: number, items: ItineraryItem[]) => void;
   savedHotel?: SavedHotel | null;
   savedFlight?: SavedFlight | null;
   center?: { lat: number; lng: number };
@@ -27,8 +36,24 @@ function formatTime(iso: string | null) {
   return new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
-export default function ItinerarySection({ itinerary, onRemove, savedHotel, savedFlight, center, readOnly = false }: Props) {
+export default function ItinerarySection({ itinerary, onRemove, onReorder, savedHotel, savedFlight, center, readOnly = false }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
+
+  function handleDragEnd(event: DragEndEvent, dayNumber: number) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const day = itinerary.days.find((d) => d.dayNumber === dayNumber);
+    if (!day) return;
+    const ids = day.items.map((i) => i.itemId ?? i.id);
+    const oldIndex = ids.indexOf(active.id as string);
+    const newIndex = ids.indexOf(over.id as string);
+    const reordered = arrayMove(day.items, oldIndex, newIndex);
+    onReorder?.(dayNumber, reordered);
+  }
 
   const totalItems = itinerary.days.reduce((sum, d) => sum + d.items.length, 0);
   const hasLocations = savedHotel || savedFlight;
@@ -165,18 +190,29 @@ export default function ItinerarySection({ itinerary, onRemove, savedHotel, save
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pl-11">
-              {day.items.map((item) => (
-                <ItineraryCard
-                  key={item.itemId ?? item.id}
-                  item={item}
-                  selected={selectedId === item.id}
-                  onSelect={() => setSelectedId(item.type !== "flight" ? item.id : null)}
-                  onRemove={() => onRemove(item.itemId ?? item.id, day.dayNumber)}
-                  readOnly={readOnly}
-                />
-              ))}
-            </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={(e) => handleDragEnd(e, day.dayNumber)}
+            >
+              <SortableContext
+                items={day.items.map((i) => i.itemId ?? i.id)}
+                strategy={rectSortingStrategy}
+              >
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pl-11">
+                  {day.items.map((item) => (
+                    <SortableItineraryCard
+                      key={item.itemId ?? item.id}
+                      item={item}
+                      selected={selectedId === item.id}
+                      onSelect={() => setSelectedId(item.type !== "flight" ? item.id : null)}
+                      onRemove={() => onRemove(item.itemId ?? item.id, day.dayNumber)}
+                      readOnly={readOnly}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
           </div>
         ))}
       </div>
@@ -212,27 +248,62 @@ export default function ItinerarySection({ itinerary, onRemove, savedHotel, save
   );
 }
 
-function ItineraryCard({
-  item,
-  selected,
-  onSelect,
-  onRemove,
-  readOnly = false,
-}: {
+function SortableItineraryCard(props: {
   item: ItineraryItem;
   selected: boolean;
   onSelect: () => void;
   onRemove: () => void;
   readOnly?: boolean;
 }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: props.item.itemId ?? props.item.id,
+    disabled: props.readOnly,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+        zIndex: isDragging ? 50 : undefined,
+      }}
+    >
+      <ItineraryCard {...props} dragHandleProps={!props.readOnly ? { ...attributes, ...listeners } : undefined} />
+    </div>
+  );
+}
+
+function ItineraryCard({
+  item,
+  selected,
+  onSelect,
+  onRemove,
+  readOnly = false,
+  dragHandleProps,
+}: {
+  item: ItineraryItem;
+  selected: boolean;
+  onSelect: () => void;
+  onRemove: () => void;
+  readOnly?: boolean;
+  dragHandleProps?: React.HTMLAttributes<HTMLElement>;
+}) {
   if (item.type === "flight") {
     return (
       <div className="relative bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 group">
         {!readOnly && (
-          <button onClick={onRemove} title="Eliminar"
-            className="absolute top-1.5 right-1.5 z-10 w-6 h-6 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50">
-            <IoTrash className="text-red-400 text-xs" />
-          </button>
+          <>
+            <button onClick={onRemove} title="Eliminar"
+              className="absolute top-1.5 right-1.5 z-10 w-6 h-6 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50">
+              <IoTrash className="text-red-400 text-xs" />
+            </button>
+            <div {...dragHandleProps}
+              className="absolute top-1.5 left-1.5 z-10 w-6 h-6 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing">
+              <IoReorderThree className="text-gray-400 text-sm" />
+            </div>
+          </>
         )}
         <div className="w-full h-24 bg-blue-50 flex items-center justify-center">
           <IoAirplane className="text-3xl text-blue-300" />
@@ -261,13 +332,21 @@ function ItineraryCard({
       }`}
     >
       {!readOnly && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onRemove(); }}
-          title="Eliminar"
-          className="absolute top-1.5 right-1.5 z-10 w-6 h-6 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
-        >
-          <IoTrash className="text-red-400 text-xs" />
-        </button>
+        <>
+          <button
+            onClick={(e) => { e.stopPropagation(); onRemove(); }}
+            title="Eliminar"
+            className="absolute top-1.5 right-1.5 z-10 w-6 h-6 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
+          >
+            <IoTrash className="text-red-400 text-xs" />
+          </button>
+          <div {...dragHandleProps}
+            onClick={(e) => e.stopPropagation()}
+            className="absolute top-1.5 left-1.5 z-10 w-6 h-6 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+          >
+            <IoReorderThree className="text-gray-400 text-sm" />
+          </div>
+        </>
       )}
 
       <div className="w-full h-24 bg-gray-100 overflow-hidden">

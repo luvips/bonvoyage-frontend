@@ -390,6 +390,15 @@ function TripPageContent() {
     }
   }
 
+  function reorderItinerary(dayNumber: number, items: ItineraryItem[]) {
+    setItinerary((prev) => ({
+      ...prev,
+      days: prev.days.map((d) =>
+        d.dayNumber === dayNumber ? { ...d, items } : d
+      ),
+    }));
+  }
+
   async function removeFromItinerary(itemId: string, dayNumber: number) {
     if (tripStatus !== "DRAFT") return; // trip locked
     const day = itinerary.days.find((d) => d.dayNumber === dayNumber);
@@ -491,6 +500,7 @@ function TripPageContent() {
       <ItinerarySection
         itinerary={itinerary}
         onRemove={removeFromItinerary}
+        onReorder={reorderItinerary}
         savedHotel={savedHotel}
         savedFlight={savedFlight}
         readOnly={tripStatus !== "DRAFT"}
